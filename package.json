@@ -1,0 +1,12 @@
+{
+  "name": "node_quotes",
+  "version": "0.0.0",
+  "description": "",
+  "main": "server.js",
+  "repository": "",
+  "author": "Anand Varma <anand.pyro@gmail.com>",
+  "dependencies": {
+    "express": "~3.2.4",
+    "socket.io": "~0.9.14"
+  }
+}
