@@ -9,12 +9,30 @@ var http = require("http");
 
 
 /* Global Variables */
-var quotes = [];
-var stocks = ["aapl", "msft", "orcl", "ntap", "mlnx"];
+var stocks = ["aapl", "msft", "orcl", "ntap", "mlnx", "tatamotors"];
+
+/* Quote Table Init */
+var quote_table = {};
+for (var i in stocks) {
+    quote_table[stocks[i].toUpperCase()] = [];
+}
+
+/* Triggers Table Init*/
+var trigger_table = {};
+for (var i in stocks) {
+    trigger_table[stocks[i].toUpperCase()] = {
+        lo: -Infinity,
+        hi: Infinity
+    };
+}
+
 
 /* Global variable getter and setter functions */
 module.exports.getQuotes = function() {
-    return quotes;
+    return quote_table;
+}
+module.exports.getTriggers = function() {
+    return trigger_table;
 }
 module.exports.getStocks = function() {
     return stocks;
@@ -24,9 +42,29 @@ module.exports.setStocks = function(stcks_in) {
 }
 module.exports.addStock = function(stock) {
     stocks.push(stock);
+    quote_table[stock.toUpperCase()] = [];
+}
+module.exports.setTriggers = function(edit) {
+    trigger_table[edit.t] = {
+        lo: edit.low,
+        hi: edit.high
+    };
+    
+    /* Check for Trigger Conditions */
+    triggerCheck();
 }
 
-
+module.exports.getQuoteHistory = function(stock) {
+    var hist = [];
+    
+    for (var i in quote_table[stock.toUpperCase()]){
+        hist.push({
+            price: quote_table[stock.toUpperCase()][i].price,
+            time: quote_table[stock.toUpperCase()][i].timestamp
+        });
+    }
+    return hist;
+}
 
 /*
  * FETCH STOCK QUOTE DATA and invoke Callback for consumption
@@ -74,7 +112,6 @@ exports.updateQuotes = function updateQuotes(dataConsumerCallback) {
 
             /* Clean and send for consumption */
             var i;
-            quotes = []
             for (i in qj_arr) {
                 var qJSON = qj_arr[i];
                 var quote = {};
@@ -86,11 +123,37 @@ exports.updateQuotes = function updateQuotes(dataConsumerCallback) {
                 quote.change_p = qJSON.cp;
                 quote.timestamp = qJSON.lt;
 
-                quotes.push(quote);
+                quote_table[qJSON.t].push(quote);
             }
+
+            /* Check for Trigger Conditions */
+            triggerCheck();
 
             /* Invoke Post GET data-consumer */
             dataConsumerCallback();
         });
     });
+}
+
+function triggerCheck() {
+    for (var key in trigger_table) {
+        if (trigger_table.hasOwnProperty(key)) {
+            
+            /* Get latest quote from array */
+            var latest = quote_table[key][quote_table[key].length - 1];
+            
+            /* Skip for Bad data */
+            if (latest == undefined) {
+                continue;
+            }
+            
+            if (latest.price < trigger_table[key].lo) {
+                console.log(key + " Lower Trigger Fired!");
+            }
+            
+            if (latest.price > trigger_table[key].hi) {
+                console.log(key + " Upper Trigger Fired!");
+            }
+        }
+    }
 }

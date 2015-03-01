@@ -6,8 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="">
-  <meta name="author" content="">
-  <link rel="icon" href="../../favicon.ico">
+  <meta name="author" content="Anand Varma, Chekuri">
 
   <title>Stock Tracker</title>
 
@@ -17,6 +16,11 @@
 </head>
 
 <body role="document">
+
+
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.4.1/canvas.min.js"></script>
+
+
 
   <!-- Fixed navbar -->
   <nav class="navbar navbar-inverse navbar-fixed-top">
@@ -32,12 +36,10 @@
       </div>
       <div id="navbar" class="navbar-collapse collapse">
         <ul class="nav navbar-nav">
-          <li class="active"><a href="#">DashBoard</a>
-          </li>
-          <li><a href="./admin.html">Admin Panel</a>
-          </li>
+
           <li class="Contact">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">more <span class="caret"></span></a>
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"> <span class="caret"></span>
+            </a>
             <ul class="dropdown-menu" role="menu">
               <li><a href="#">Contact</a>
               </li>
@@ -66,9 +68,15 @@
     <div class="page-header">
       <h1></h1>
     </div>
-    <div class="alert alert-success" role="alert">
-      <strong>Link Up and Stable. </strong> Succesfully Connected to live stock tracker service
+    <div class="alert alert-danger" role="alert">
+      <strong id="alert_head"> Establishing Connection... </strong>
+      <span id="alert_text">  </span>
+      <span style="color:gray; float:right">
+        Last Updated <strong id="data_age"> </strong>
+      </span>
     </div>
+
+
 
 
     <div class="row" id="cards">
@@ -76,12 +84,45 @@
     </div>
 
 
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+      <div class="modal-dialog" style="margin-top:70px">
+        <div class="modal-content" style="background-color: #337AB7;">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span>
+            </button>
+            <h4 class="modal-title" id="myModalLabel" style="color: #fff;"> </h4>
+          </div>
+          <div class="modal-body" style="background-color: #efefef;">
+
+            Lower Trigger Price:
+            <input class="form-control" id="trigg_lo" style="width:135px; margin-bottom:5px" type="text"> Upper Trigger Price:
+            <input class="form-control" id="trigg_hi" style="width:135px" type="text">
+
+          </div>
+          <div class="modal-footer" style="background-color: #fff;">
+            <button type="button" class="btn btn-danger" id="del_btn" style="float:left">Delete</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="save_btn">Save changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
     <hr/>
+    
+    <div id="chartContainer" style="height: 300px; width: 100%;">
+      </div>
+    
     <div class="well">
       <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas sed diam eget risus varius blandit sit amet non magna. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent commodo cursus magna, vel scelerisque nisl consectetur et.
         Cras mattis consectetur purus sit amet fermentum. Duis mollis, est non commodo luctus, nisi erat porttitor ligula, eget lacinia odio sem nec elit. Aenean lacinia bibendum nulla sed consectetur.</p>
       <button type="button" class="btn btn-info btn-lg" id="target">
-        Force Reload!
+        <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Force Reload!
+      </button>
+      <button type="button" class="btn btn-info btn-lg" id="newData">
+        <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Force Reload DATA!
       </button>
     </div>
 
@@ -95,19 +136,77 @@
       var socket = io.connect();
       var active_tiles = [];
       console.log("IO stuff should happen now...");
+      var last_update_ms;
 
       socket.on('connect', function() {
+        $('div.alert').removeClass("alert-danger");
+        $('div.alert').addClass("alert-success");
+        $('strong#alert_head').text("Link Up and Stable.");
+        $('span#alert_text').text("Connection established with the stock quote streaming server.");
+
         console.log("Got Conn.");
       });
 
       socket.on('disconnect', function() {
 
+        $('div.alert').removeClass("alert-success");
+        $('div.alert').addClass("alert-danger");
+        $('strong#alert_head').text("Connection Lost... ");
+        $('span#alert_text').text(" Something's not right! (RETRYING)");
+
         console.log("Lost Conn.");
       });
 
 
+function dateParse(tStamp) {
+  tStamp = tStamp.substring(0, tStamp.length - 3);
+  
+  tStamp = tStamp.replace(",", "");
+  tStamp = tStamp.replace("PM", " PM");
+  tStamp = tStamp.replace("PM", " PM");
+
+  return (new Date(Date.parse(tStamp)));
+}
+
+      socket.on('hist_data', function(payload) {
+        console.log("got hist data " + payload);
+        
+        var chartData = [];
+        
+        for (var i in payload){
+          chartData.push({
+            x: dateParse(payload[i].time),
+            y: parseFloat(payload[i].price)
+          });
+        }
+        
+
+        var chart = new CanvasJS.Chart("chartContainer", {
+            title: {
+              //text: "Simple Date-Time Chart"
+            },
+            axisX: {
+              title: "",
+              //gridThickness: 1
+            },
+            axisY: {
+              //title: "Price"
+            },
+            data: [{
+              type: "line",
+              dataPoints: chartData
+            }]
+          });
+
+          chart.render();
+        
+        
+      });
+
+
       socket.on('pushQuotes', function(payload) {
-        console.log("pushQuotes " + payload);
+        //console.log("pushQuotes " + payload);
+        last_update_ms = (new Date).getTime();
 
         /* Clear Old Stuff */
         var i;
@@ -136,7 +235,8 @@
 
           var quoteCard = '<div class="col-sm-4" style="width:292px" id="' + card_id + '">' +
             '<div class="panel panel-primary">' +
-            '<div class="panel-heading">' +
+            '<div class="panel-heading" id="' + payload[i].ticker + '">' +
+            '<div style="float:right; color:#CCCCFF; cursor: pointer;"  class="ed_btn";> <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> </div>' +
             '<h3 class="panel-title">' + payload[i].ticker + ' (' + payload[i].exchange + ')</h3>' +
             '</div>' +
             '<div class="panel-body" style="margin-top:-15px">' +
@@ -150,12 +250,73 @@
           console.log(payload[i]);
           $("#cards").append(quoteCard);
         }
-      });
 
+
+
+        $('.ed_btn').click(function() {
+          var stock = $(this).parent().attr('id');
+
+          socket.emit('clnt_req', {
+            op: "requestTrigger",
+            payload: {
+              t: stock,
+            }
+          });
+
+
+          socket.on('responseTrigger', function(payload) {
+            console.log(payload);
+            $("#trigg_lo").val(payload.lo);
+            $("#trigg_hi").val(payload.hi);
+          });
+
+          $('#myModal').modal('show');
+
+          $('.modal-title').text(stock);
+          //$('.modal-body').html("cool broh");
+
+
+          $('#save_btn').click(function() {
+            socket.emit('clnt_req', {
+              op: "edit",
+              payload: {
+                t: stock,
+                low: parseFloat($('#trigg_lo').val()),
+                high: parseFloat($('#trigg_hi').val())
+              }
+            });
+
+            $('#myModal').modal('hide');
+          });
+
+        });
+
+
+
+
+
+
+
+      });
 
       $("#target").click(function() {
-        socket.emit('requestAll');
+        socket.emit('clnt_req', {
+          op: "requestAll",
+          payload: 0
+        });
       });
+
+
+      $("#newData").click(function() {
+        socket.emit('clnt_req', {
+          op: "hist",
+          payload: "AAPL"
+        });
+      });
+
+      window.setInterval(function() {
+        $('#data_age').text(" (" + Math.floor(((new Date).getTime() - last_update_ms) / 1000) + " secs ago)");
+      }, 1000);
     </script>
 </body>
 

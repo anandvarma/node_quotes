@@ -8,50 +8,40 @@ var http = require("http");
 var data = require("./dataSource.js");
 
 /*
+ * Global Variables
+ */
+var active_sockets = [];
+
+/*
  * Quote Consumption Logic
  */
 function sendAllQuotes() {
-  var i;
-  var quotes = data.getQuotes();
-  for (i in quotes) {
-    console.log(quotes[i].ticker + " - " + quotes[i].price);
+  var quoteTable = data.getQuotes();
+  var latestAll = [];
+
+  for (var key in quoteTable) {
+    if (quoteTable.hasOwnProperty(key)) {
+      var quotes = quoteTable[key];
+      var latest = quotes[quotes.length - 1];
+      if (latest != undefined) {
+        console.log(key + " (" + quotes.length + " entries) top-> " + latest.price);
+        latestAll.push(latest);
+      }
+      else {
+        console.log(key + " -> No Data");
+      }
+    }
   }
 
-  for (i in active_sockets) {
-    active_sockets[i].emit('pushQuotes', quotes);
+  for (var i in active_sockets) {
+    active_sockets[i].emit('pushQuotes', latestAll);
   }
 }
 
 
 /*
- * HTTP Server and stuff
+ * Start accepting HTTP requests
  */
-function _connHandler(req, res) {
-  res.writeHead(200);
-  var path = url.parse(req.url).pathname;
-  console.log("got conn for " + path);
-
-  switch (path) {
-    case '/':
-      /* serve contents of index.html */
-      fs.readFile("./socket.html", function(err, html) {
-        if (err) {
-          console.log("Failed to read index.html");
-          return;
-        }
-        res.end(html, "utf-8");
-        console.log("served index.html");
-      });
-      break;
-
-    default:
-      res.writeHead(404);
-      res.end("opps this doesn't exist - 404");
-  }
-
-}
-
-/* Start accepting HTTP requests */
 console.log("Starting... at " + process.env.IP + ":" + process.env.PORT);
 var router = express();
 router.use(express.static(path.resolve(__dirname, 'public')));
@@ -59,16 +49,10 @@ var server = http.createServer(router);
 server.listen(process.env.PORT, process.env.IP);
 
 /*
- * Global Variables
- */
-var active_sockets = [];
-
-
-
-/*
- * Web Sockets and Other Dynamic Stuff
+ * Web Socket Handling
  */
 var soc = io.listen(server);
+soc.set('log level', 1);
 
 soc.on('connection', function(socket) {
   /* Keep track of new Socket Connection */
@@ -83,26 +67,54 @@ soc.on('connection', function(socket) {
     console.log("Socket Connection closed. Active Sockets=" + active_sockets.length);
   });
 
-  socket.on('requestAll', function() {
-    data.updateQuotes(sendAllQuotes);
-  });
+  /* Socket Request Router */
+  socket.on('clnt_req', function(req) {
 
-  socket.on('addStock', function(tickerSym) {
-    data.addStock("" + tickerSym);
-    data.updateQuotes(function(){ console.log("Updated Stock List."); });
-    // send out stock list and quotes
-    var i;
-    for (i in active_sockets) {
-      active_sockets[i].emit('stockList_rsp', data.getStocks());
-    }
-  });
-  
-  socket.on('stockList', function(){
-    var i;
-    for (i in active_sockets) {
-      active_sockets[i].emit('stockList_rsp', data.getStocks());
+    console.log(req);
+
+    switch (req.op) {
+      case 'requestAll':
+        data.updateQuotes(sendAllQuotes);
+        break;
+
+      case 'requestTrigger':
+        var trig = data.getTriggers()[req.payload.t.toUpperCase()];
+        socket.emit('responseTrigger', {
+          lo: trig.lo,
+          hi: trig.hi
+        });
+        break;
+
+      case 'edit':
+        data.setTriggers(req.payload);
+        break;
+        
+      case 'hist':
+        console.log("requested for hist data");
+        socket.emit('hist_data', data.getQuoteHistory(req.payload));
+        break;
+
+
+      default:
+        console.log("BAD OP-code");
     }
   });
 });
 
-data.updateQuotes(function(){console.log("Initialized...")});
+/* Get data as soon as server starts */
+data.updateQuotes(function() {
+  console.log("Initialized...")
+});
+
+/* Fetch new data periodically */
+var num_per_poll = 0;
+
+setInterval(function() {
+  console.log("Periodic POLL... " + active_sockets.length);
+  
+  if ((active_sockets.length > 0) || (num_per_poll % 5 == 0)) {
+    data.updateQuotes(sendAllQuotes);
+  }
+  num_per_poll += 1;
+  
+}, 1 * 60 * 1000);
