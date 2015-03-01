@@ -4,12 +4,14 @@ var http = require("http");
  * API - Usage
  * setStocks    - pass an array of interested stocks
  * updateQuotes - fetch data from stock quote data source
- * getQuotes    - fetch data from memory
+ *
+ * getQuotesTable   - fetch data from memory (Key- TickerSymbol; Val- array of historic quotes)
+ * getTriggersTable
  */
 
 
 /* Global Variables */
-var stocks = ["aapl", "msft", "orcl", "ntap", "mlnx", "tatamotors"];
+var stocks = ["aapl", "msft", "orcl", "ntap", "tatamotors"];
 
 /* Quote Table Init */
 var quote_table = {};
@@ -123,7 +125,7 @@ exports.updateQuotes = function updateQuotes(dataConsumerCallback) {
                 quote.change_p = qJSON.cp;
                 quote.timestamp = qJSON.lt;
 
-                quote_table[qJSON.t].push(quote);
+                quote_table[qJSON.t.toUpperCase()].push(quote);
             }
 
             /* Check for Trigger Conditions */

@@ -17,10 +17,8 @@
 
 <body role="document">
 
-
+  <!-- Plotting Script -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.4.1/canvas.min.js"></script>
-
-
 
   <!-- Fixed navbar -->
   <nav class="navbar navbar-inverse navbar-fixed-top">
@@ -63,8 +61,7 @@
 
   <div class="container theme-showcase" role="main">
 
-
-
+    <!-- Status Bar -->
     <div class="page-header">
       <h1></h1>
     </div>
@@ -76,9 +73,7 @@
       </span>
     </div>
 
-
-
-
+    <!-- Data Container -->
     <div class="row" id="cards">
       <!-- Java Script Puts cards here -->
     </div>
@@ -111,18 +106,15 @@
 
 
     <hr/>
+
     
-    <div id="chartContainer" style="height: 300px; width: 100%;">
-      </div>
-    
+
     <div class="well">
-      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas sed diam eget risus varius blandit sit amet non magna. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent commodo cursus magna, vel scelerisque nisl consectetur et.
-        Cras mattis consectetur purus sit amet fermentum. Duis mollis, est non commodo luctus, nisi erat porttitor ligula, eget lacinia odio sem nec elit. Aenean lacinia bibendum nulla sed consectetur.</p>
+      <!-- Graph Container -->
+      <div id="chartContainer" style="height: 240px; width: 100%;"></div>
+      
       <button type="button" class="btn btn-info btn-lg" id="target">
         <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Force Reload!
-      </button>
-      <button type="button" class="btn btn-info btn-lg" id="newData">
-        <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Force Reload DATA!
       </button>
     </div>
 
@@ -132,6 +124,9 @@
     <!-- Bootstrap core JavaScript -->
     <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
 
+
+
+    <!-- The Core -->
     <script>
       var socket = io.connect();
       var active_tiles = [];
@@ -158,49 +153,52 @@
       });
 
 
-function dateParse(tStamp) {
-  tStamp = tStamp.substring(0, tStamp.length - 3);
-  
-  tStamp = tStamp.replace(",", "");
-  tStamp = tStamp.replace("PM", " PM");
-  tStamp = tStamp.replace("PM", " PM");
+      function dateParse(tStamp) {
+        tStamp = tStamp.substring(0, tStamp.length - 3);
 
-  return (new Date(Date.parse(tStamp)));
-}
+        tStamp = tStamp.replace(",", "");
+        tStamp = tStamp.replace("PM", " PM");
+        tStamp = tStamp.replace("PM", " PM");
+
+        return (new Date(Date.parse(tStamp)));
+      }
 
       socket.on('hist_data', function(payload) {
         console.log("got hist data " + payload);
-        
+
         var chartData = [];
-        
-        for (var i in payload){
+
+        for (var i in payload) {
           chartData.push({
             x: dateParse(payload[i].time),
             y: parseFloat(payload[i].price)
           });
         }
-        
+
 
         var chart = new CanvasJS.Chart("chartContainer", {
-            title: {
-              //text: "Simple Date-Time Chart"
-            },
-            axisX: {
-              title: "",
-              //gridThickness: 1
-            },
-            axisY: {
-              //title: "Price"
-            },
-            data: [{
-              type: "line",
-              dataPoints: chartData
-            }]
-          });
+          backgroundColor: "#F5F5F5",
+          animationEnabled: true,
+          
+          title: {
+            //text: "Simple Date-Time Chart"
+          },
+          axisX: {
+            title: "",
+            //gridThickness: 1
+          },
+          axisY: {
+            //title: "Price"
+          },
+          data: [{
+            type: "line",
+            dataPoints: chartData
+          }]
+        });
 
-          chart.render();
-        
-        
+        chart.render();
+
+
       });
 
 
@@ -234,9 +232,10 @@ function dateParse(tStamp) {
           }
 
           var quoteCard = '<div class="col-sm-4" style="width:292px" id="' + card_id + '">' +
-            '<div class="panel panel-primary">' +
+            '<div class="panel panel-info">' +
             '<div class="panel-heading" id="' + payload[i].ticker + '">' +
-            '<div style="float:right; color:#CCCCFF; cursor: pointer;"  class="ed_btn";> <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> </div>' +
+            '<div style="float:right; color:#CCCCFF; cursor: pointer; margin-left:10px;"  class="ed_btn";> <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> </div>' +
+            '<div style="float:right; color:#CCCCFF; cursor: pointer;"  class="vis_btn";> <span class="glyphicon glyphicon-stats" aria-hidden="true"></span> </div>' +
             '<h3 class="panel-title">' + payload[i].ticker + ' (' + payload[i].exchange + ')</h3>' +
             '</div>' +
             '<div class="panel-body" style="margin-top:-15px">' +
@@ -263,7 +262,6 @@ function dateParse(tStamp) {
             }
           });
 
-
           socket.on('responseTrigger', function(payload) {
             console.log(payload);
             $("#trigg_lo").val(payload.lo);
@@ -288,16 +286,23 @@ function dateParse(tStamp) {
 
             $('#myModal').modal('hide');
           });
-
         });
 
 
 
+        $('.vis_btn').click(function() {
+          var stock = $(this).parent().attr('id');
+          
+          $(this).parent().parent().removeClass('panel-info');
+          $(this).parent().parent().addClass('panel-primary');
 
+          socket.emit('clnt_req', {
+            op: "hist",
+            payload: stock
+          });
+        });
 
-
-
-      });
+      }); //on PushQuotes end
 
       $("#target").click(function() {
         socket.emit('clnt_req', {
@@ -306,18 +311,11 @@ function dateParse(tStamp) {
         });
       });
 
-
-      $("#newData").click(function() {
-        socket.emit('clnt_req', {
-          op: "hist",
-          payload: "AAPL"
-        });
-      });
-
       window.setInterval(function() {
         $('#data_age').text(" (" + Math.floor(((new Date).getTime() - last_update_ms) / 1000) + " secs ago)");
       }, 1000);
     </script>
+    <!-- End of the Core -->
+    
 </body>
-
 </html>
