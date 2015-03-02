@@ -11,7 +11,7 @@ var http = require("http");
 
 
 /* Global Variables */
-var stocks = ["aapl", "msft", "orcl", "ntap", "tatamotors"];
+var stocks = ["aapl", "msft", "orcl", "coco", "tatamotors"];
 
 /* Quote Table Init */
 var quote_table = {};

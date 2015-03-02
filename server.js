@@ -101,20 +101,20 @@ soc.on('connection', function(socket) {
   });
 });
 
+
 /* Get data as soon as server starts */
 data.updateQuotes(function() {
-  console.log("Initialized...")
+  console.log("Got Initial Data...");
 });
+
 
 /* Fetch new data periodically */
 var num_per_poll = 0;
 
 setInterval(function() {
-  console.log("Periodic POLL... " + active_sockets.length);
-  
+  // Poll every minute if we have clients. Else poll every 5-mins for archive
   if ((active_sockets.length > 0) || (num_per_poll % 5 == 0)) {
     data.updateQuotes(sendAllQuotes);
   }
   num_per_poll += 1;
-  
 }, 1 * 60 * 1000);
