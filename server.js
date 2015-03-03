@@ -81,7 +81,8 @@ soc.on('connection', function(socket) {
         var trig = data.getTriggers()[req.payload.t.toUpperCase()];
         socket.emit('responseTrigger', {
           lo: trig.lo,
-          hi: trig.hi
+          hi: trig.hi,
+          eps: trig.eps
         });
         break;
 

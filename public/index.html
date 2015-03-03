@@ -65,9 +65,9 @@
     <div class="page-header">
       <h1></h1>
     </div>
-    
-    
-      
+
+
+
     <div class="alert alert-danger" role="alert">
       <strong id="alert_head"> Establishing Connection... </strong>
       <span id="alert_text">  </span>
@@ -77,13 +77,10 @@
         <button type="button" class="btn btn-success" id="target" style="margin-top:-7px; margin-left:10px">
         <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Force Reload!
       </button>
-        
+
       </span>
-      
-      
-      
     </div>
-    
+
 
     <!-- Data Container -->
     <div class="row" id="cards">
@@ -93,7 +90,7 @@
 
     <!-- Modal -->
     <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-      <div class="modal-dialog" style="margin-top:70px">
+      <div class="modal-dialog" style="margin-top:70px; width:370px">
         <div class="modal-content" style="background-color: #337AB7;">
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span>
@@ -107,6 +104,8 @@
             <input class="form-control" id="trigg_lo" style="width:135px; margin-bottom:5px" type="text">
             Upper Trigger Price:
             <input class="form-control" id="trigg_hi" style="width:135px" type="text">
+            Earnings Per Share:
+            <input class="form-control" id="trigg_eps" style="width:135px" type="text">
 
           </div>
           <div class="modal-footer" style="background-color: #fff;">
@@ -121,29 +120,26 @@
 
     <hr/>
 
-    
+
 
     <div class="well">
       <!-- Graph Container -->
       <div style="float:right; width:25%">
         <h4 style="float:right"><span class="label label-success">$ 210.0</span></h4>
         <h4 style="float:left"><span class="label label-danger">$ 0.0</span></h4>
-        
+
         <div class="progress" style="clear:both">
-  <div class="progress-bar progress-bar-warning progress-bar-striped active" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 45%">
-    <span class="sr-only">45% Complete</span>
-  </div>
-</div>
+          <div class="progress-bar progress-bar-warning progress-bar-striped active" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 45%">
+            <span class="sr-only">45% Complete</span>
+          </div>
+        </div>
 
-      <hr/>
-<h3>P/E <span class="label label-default">54.1</span></h3>
-      <hr/>
-
+        <hr/>
+        <h3>P/E <span class="label label-default">54.1</span></h3>
+        <hr/>
         
       </div>
-      <div id="chartContainer" style="height: 240px; width: 70%"></div>
-
-      
+      <div id="chartContainer" style="height: 200px; width: 70%"></div>
     </div>
 
 
@@ -232,7 +228,7 @@
             color: "rgba(54,158,173,.6)",
             //lineThickness: 3,
             markerSize: 5,
-            
+
             dataPoints: chartData
           }]
         });
@@ -310,6 +306,7 @@
             console.log(payload);
             $("#trigg_lo").val(payload.lo);
             $("#trigg_hi").val(payload.hi);
+            $("#trigg_eps").val(payload.eps);
           });
 
           $('#myModal').modal('show');
@@ -324,7 +321,8 @@
               payload: {
                 t: stock,
                 low: parseFloat($('#trigg_lo').val()),
-                high: parseFloat($('#trigg_hi').val())
+                high: parseFloat($('#trigg_hi').val()),
+                eps: parseFloat($('#trigg_eps').val())
               }
             });
 
@@ -336,7 +334,7 @@
 
         $('.vis_btn').click(function() {
           var stock = $(this).parent().attr('id');
-          
+
           $(this).parent().parent().removeClass('panel-info');
           $(this).parent().parent().addClass('panel-primary');
 
@@ -361,6 +359,6 @@
       }, 1000);
     </script>
     <!-- End of the Core -->
-    
+
 </body>
 </html>

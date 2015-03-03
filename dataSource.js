@@ -11,7 +11,7 @@ var http = require("http");
 
 
 /* Global Variables */
-var stocks = ["aapl", "msft", "orcl", "coco", "tatamotors"];
+var stocks = ["aapl", "msft", "orcl", "tatamotors"];
 
 /* Quote Table Init */
 var quote_table = {};
@@ -24,7 +24,8 @@ var trigger_table = {};
 for (var i in stocks) {
     trigger_table[stocks[i].toUpperCase()] = {
         lo: -Infinity,
-        hi: Infinity
+        hi: Infinity,
+        eps: Infinity
     };
 }
 
@@ -49,7 +50,8 @@ module.exports.addStock = function(stock) {
 module.exports.setTriggers = function(edit) {
     trigger_table[edit.t] = {
         lo: edit.low,
-        hi: edit.high
+        hi: edit.high,
+        eps: edit.eps
     };
     
     /* Check for Trigger Conditions */
