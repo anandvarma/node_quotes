@@ -19,22 +19,20 @@ function sendAllQuotes() {
   var quoteTable = data.getQuotes();
   var latestAll = [];
 
-  for (var key in quoteTable) {
-    if (quoteTable.hasOwnProperty(key)) {
-      var quotes = quoteTable[key];
+  for (var stock in quoteTable) {
+    if (quoteTable.hasOwnProperty(stock)) {
+      var quotes = quoteTable[stock];
       var latest = quotes[quotes.length - 1];
       if (latest != undefined) {
-        console.log(key + " (" + quotes.length + " entries) top-> " + latest.price);
+        console.log(stock + " (" + quotes.length + " entries) top-> " + latest.price);
         latestAll.push(latest);
-      }
-      else {
-        console.log(key + " -> No Data");
       }
     }
   }
 
+  /* Send out new Data to all active clients */
   for (var i in active_sockets) {
-    active_sockets[i].emit('pushQuotes', latestAll);
+    active_sockets[i].emit('pushLatestQuotes', latestAll);
   }
 }
 
@@ -60,7 +58,7 @@ soc.on('connection', function(socket) {
   console.log("Socket Connection made. Active Sockets=" + active_sockets.length);
 
   /* Send in Memory data */
-  sendAllQuotes();
+  sendAllQuotes(); //TODO - send only to new client
 
   socket.on('disconnect', function() {
     active_sockets.splice(active_sockets.indexOf(socket), 1);
@@ -68,33 +66,33 @@ soc.on('connection', function(socket) {
   });
 
   /* Socket Request Router */
-  socket.on('clnt_req', function(req) {
-
+  socket.on('clientRequest', function(req) {
     console.log(req);
 
     switch (req.op) {
-      case 'requestAll':
+      case 'doForceReload':
         data.updateQuotes(sendAllQuotes);
         break;
 
-      case 'requestTrigger':
-        var trig = data.getTriggers()[req.payload.t.toUpperCase()];
-        socket.emit('responseTrigger', {
-          lo: trig.lo,
-          hi: trig.hi,
-          eps: trig.eps
-        });
+      case 'getUserData':
+        var stock = req.payload.t;
+        var usrData = data.getUserData()[stock.toUpperCase()];
+        socket.emit('responseUserData', usrData);
         break;
 
-      case 'edit':
-        data.setTriggers(req.payload);
+      case 'setUserData':
+        data.setUserData(req.payload);
+
+        // Emit new data for UI refresh
+        var stock = req.payload.t;
+        var usrData = data.getUserData()[stock.toUpperCase()];
+        socket.emit('responseUserData', usrData);
         break;
-        
-      case 'hist':
+
+      case 'getPlotData':
         console.log("requested for hist data");
-        socket.emit('hist_data', data.getQuoteHistory(req.payload));
+        socket.emit('responsePlotData', data.getQuoteHistory(req.payload));
         break;
-
 
       default:
         console.log("BAD OP-code");

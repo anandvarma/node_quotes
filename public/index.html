@@ -101,15 +101,12 @@
 
             <!-- TODO - make inline -->
             Lower Trigger Price:
-            <input class="form-control" id="trigg_lo" style="width:135px; margin-bottom:5px" type="text">
-            Upper Trigger Price:
-            <input class="form-control" id="trigg_hi" style="width:135px" type="text">
-            Earnings Per Share:
+            <input class="form-control" id="trigg_lo" style="width:135px; margin-bottom:5px" type="text"> Upper Trigger Price:
+            <input class="form-control" id="trigg_hi" style="width:135px" type="text"> Earnings Per Share:
             <input class="form-control" id="trigg_eps" style="width:135px" type="text">
 
           </div>
           <div class="modal-footer" style="background-color: #fff;">
-            <button type="button" class="btn btn-danger" id="del_btn" style="float:left">Delete</button>
             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
             <button type="button" class="btn btn-primary" id="save_btn">Save changes</button>
           </div>
@@ -122,22 +119,38 @@
 
 
 
-    <div class="well">
+    <div class="well" id="placeholder">
+      <h4><span class="glyphicon glyphicon-stats" aria-hidden="true"></span>
+Select a card to display more information.</h4>
+    </div>
+
+    <div class="well" id="real" style="display: none;">
       <!-- Graph Container -->
       <div style="float:right; width:25%">
-        <h4 style="float:right"><span class="label label-success">$ 210.0</span></h4>
-        <h4 style="float:left"><span class="label label-danger">$ 0.0</span></h4>
+        <h4 style="float:right"><span class="label label-success" id="well_hi_trig">$ 210.0</span></h4>
+        <h4 style="float:left"><span class="label label-danger" id="well_lo_trig">$ 0.0</span></h4>
 
         <div class="progress" style="clear:both">
-          <div class="progress-bar progress-bar-warning progress-bar-striped active" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 45%">
-            <span class="sr-only">45% Complete</span>
+          <div class="progress-bar progress-bar-warning progress-bar-striped active" id="trig_proggress" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 45%">
           </div>
         </div>
 
         <hr/>
-        <h3>P/E <span class="label label-default">54.1</span></h3>
+        <h3>P/E <span class="label label-default" id="pe">54.1</span></h3>
         <hr/>
-        
+
+        <button type="button" class="btn btn-default">
+          <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Refresh
+        </button>
+
+        <button type="button" class="btn btn-default" id="ed_btn">
+          <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> Edit
+        </button>
+
+        <button type="button" class="btn btn-default">
+          <span class="glyphicon glyphicon-trash" aria-hidden="true"></span> Remove
+        </button>
+
       </div>
       <div id="chartContainer" style="height: 200px; width: 70%"></div>
     </div>
@@ -154,6 +167,7 @@
     <script>
       var socket = io.connect();
       var active_tiles = [];
+      var focus_tile_id = "";
       var last_update_ms;
 
 
@@ -195,7 +209,7 @@
       /*
        * Plotting Function!
        */
-      socket.on('hist_data', function(payload) {
+      socket.on('responsePlotData', function(payload) {
         console.log("got hist data " + payload);
 
         var chartData = [];
@@ -239,11 +253,71 @@
 
 
       /*
+       * Misc. User speicified Data Display
+       */
+      socket.on('responseUserData', function(payload) {
+        console.log(payload);
+
+        // Set values in modal
+        $("#trigg_lo").val(payload.low);
+        $("#trigg_hi").val(payload.high);
+        $("#trigg_eps").val(payload.eps);
+
+        // Set values in the well
+        $("#well_hi_trig").text("$ " + payload.high);
+        $("#well_lo_trig").text("$ " + payload.low);
+
+        // Set Progress-Bar
+        var price = parseFloat($("#" + focus_tile_id).find('h2#price').text().substr(1)); // substr 1 for $ (TODO - make currency configurable)
+        var percent_target = 100 * (price - payload.low) / (payload.high - payload.low)
+        $("#trig_proggress").width(percent_target + "%");
+
+        // Calculate and Set P/E
+        var pe = price / payload.eps;
+        $("span#pe").text(pe.toFixed(2));
+      });
+
+
+      $('#save_btn').click(function() {
+        var stock = $("#" + focus_tile_id).find(".panel-heading").attr('id');
+
+        socket.emit('clientRequest', {
+          op: "setUserData",
+          payload: {
+            t: stock,
+            low: parseFloat($('#trigg_lo').val()),
+            high: parseFloat($('#trigg_hi').val()),
+            eps: parseFloat($('#trigg_eps').val())
+          }
+        });
+
+        $('#myModal').modal('hide');
+      });
+
+
+
+      $('#ed_btn').click(function() {
+        var stock = $("#" + focus_tile_id).find(".panel-heading").attr('id');
+
+        socket.emit('clientRequest', {
+          op: "getUserData",
+          payload: {
+            t: stock,
+          }
+        });
+
+        $('#myModal').modal('show');
+        $('.modal-title').text(stock);
+      });
+
+
+
+
+      /*
        * Quote Data Handler
        */
       // TODO - clean up the nested callbacks
-      socket.on('pushQuotes', function(payload) {
-        //console.log("pushQuotes " + payload);
+      socket.on('pushLatestQuotes', function(payload) {
         last_update_ms = (new Date).getTime();
 
         /* Clear Old Stuff */
@@ -274,13 +348,12 @@
           var quoteCard = '<div class="col-sm-4" style="width:292px" id="' + card_id + '">' +
             '<div class="panel panel-info">' +
             '<div class="panel-heading" id="' + payload[i].ticker + '">' +
-            '<div style="float:right; color:#CCCCFF; cursor: pointer; margin-left:10px;"  class="ed_btn";> <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> </div>' +
             '<div style="float:right; color:#CCCCFF; cursor: pointer;"  class="vis_btn";> <span class="glyphicon glyphicon-stats" aria-hidden="true"></span> </div>' +
             '<h3 class="panel-title">' + payload[i].ticker + ' (' + payload[i].exchange + ')</h3>' +
             '</div>' +
             '<div class="panel-body" style="margin-top:-15px">' +
             '<h3> <span class="' + pchange_class + '" style="float:right; margin-top:5px">' + payload[i].change_p + ' %</span> </h3>' +
-            '<h2> $' + payload[i].price + '</h2>' +
+            '<h2 id="price">$' + payload[i].price + '</h2>' +
             '<span style="color:gray">' + payload[i].timestamp + '</span>' +
             '</div>' +
             '</div>' +
@@ -290,65 +363,67 @@
           $("#cards").append(quoteCard);
         }
 
+        /* Draw the well after a refresh */
+        if (focus_tile_id != "") {
+          var def_card = $("#" + focus_tile_id).find(".panel-info");
+          var stock = $("#" + focus_tile_id).find(".panel-heading").attr('id');
 
+          def_card.removeClass('panel-info');
+          def_card.addClass('panel-primary');
 
-        $('.ed_btn').click(function() {
-          var stock = $(this).parent().attr('id');
+          socket.emit('clientRequest', {
+            op: "getPlotData",
+            payload: stock
+          });
 
-          socket.emit('clnt_req', {
-            op: "requestTrigger",
+          socket.emit('clientRequest', {
+            op: "getUserData",
             payload: {
               t: stock,
             }
           });
 
-          socket.on('responseTrigger', function(payload) {
-            console.log(payload);
-            $("#trigg_lo").val(payload.lo);
-            $("#trigg_hi").val(payload.hi);
-            $("#trigg_eps").val(payload.eps);
-          });
-
-          $('#myModal').modal('show');
-
-          $('.modal-title').text(stock);
-          //$('.modal-body').html("cool broh");
-
-
-          $('#save_btn').click(function() {
-            socket.emit('clnt_req', {
-              op: "edit",
-              payload: {
-                t: stock,
-                low: parseFloat($('#trigg_lo').val()),
-                high: parseFloat($('#trigg_hi').val()),
-                eps: parseFloat($('#trigg_eps').val())
-              }
-            });
-
-            $('#myModal').modal('hide');
-          });
-        });
+        }
 
 
 
         $('.vis_btn').click(function() {
-          var stock = $(this).parent().attr('id');
+
+          $("div.well#real").show();
+          $("div.well#placeholder").hide();
+
+          var def_card = $("#" + focus_tile_id).find(".panel-primary");
+          def_card.removeClass('panel-primary');
+          def_card.addClass('panel-info');
+
+          // Remember the tile in focus
+          focus_tile_id = $(this).parent().parent().parent().attr('id');
+          var stock = $("#" + focus_tile_id).find(".panel-heading").attr('id');
 
           $(this).parent().parent().removeClass('panel-info');
           $(this).parent().parent().addClass('panel-primary');
 
-          socket.emit('clnt_req', {
-            op: "hist",
+          socket.emit('clientRequest', {
+            op: "getPlotData",
             payload: stock
           });
+
+          socket.emit('clientRequest', {
+            op: "getUserData",
+            payload: {
+              t: stock,
+            }
+          });
+
         });
+
+
 
       }); //on PushQuotes end
 
       $("#target").click(function() {
-        socket.emit('clnt_req', {
-          op: "requestAll",
+        socket.emit('clientRequest', {
+          op: "doForceReload",
           payload: 0
         });
       });
@@ -361,4 +436,5 @@
     <!-- End of the Core -->
 
 </body>
+
 </html>
