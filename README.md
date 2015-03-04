@@ -24,3 +24,4 @@ public/index.html -
 
 Screenshot
 -------------------
+![HTML client connected to a node_quotes server](https://raw.githubusercontent.com/anandvarma/node_quotes/master/doc/img/screen.JPG)
