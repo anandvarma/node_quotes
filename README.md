@@ -1,8 +1,26 @@
-                  .___                              __                 
-  ____   ____   __| _/____       ________ __  _____/  |_  ____   ______
- /    \ /  _ \ / __ |/ __ \     / ____/  |  \/  _ \   __\/ __ \ /  ___/
-|   |  (  <_> ) /_/ \  ___/    < <_|  |  |  (  <_> )  | \  ___/ \___ \ 
-|___|  /\____/\____ |\___  >____\__   |____/ \____/|__|  \___  >____  >
-     \/            \/    \/_____/  |__|                      \/     \/ 
+Node Quotes!
+===================
 
-A node.js server that streams live stock-quotes via web-sockets.
+Node_quotes is a **Node.JS** based server that periodically fetches stock price data  and also fires events such as stop-losses based on price movements.
+
+Clients connect to the server via web-sockets and get access to up to date pricing data.
+
+----------
+
+
+Running the server
+-------------
+> **node server.js**
+
+--------
+#### <i class="icon-file"></i> Files
+server.js -
+dataSource.js - 
+public/index.html - 
+
+
+----------
+
+
+Screenshot
+-------------------
